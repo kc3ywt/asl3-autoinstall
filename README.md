@@ -7,4 +7,5 @@ This guide uses a file to easily auto install **Allstarlink3**, **Allmon3**, **S
 ## How to use:
 Run as root:
 
+'''bash
 cd /opt
