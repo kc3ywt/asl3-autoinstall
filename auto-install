@@ -1,0 +1,226 @@
+#!/bin/bash
+
+# AllStarLink, DVSwitch, Reflectors & KC3YWT Custom Installer
+# For Debian 12
+# Author: Giovanni (KC3YWT)
+#
+# Run this file as:
+# chmod +x allstar_installer.sh && sudo ./allstar_installer.sh
+
+# Color codes
+GREEN="\e[32m"
+RED="\e[31m"
+YELLOW="\e[33m"
+RESET="\e[0m"
+
+# Update & Upgrade
+clear
+echo -e "${GREEN}Updating system packages...${RESET}"
+apt update && apt upgrade -y
+
+# =============================
+# Function to ask Y/N questions
+# =============================
+ask() {
+    read -p "$1 [y/n]: " answer
+    case ${answer:0:1} in
+        y|Y ) return 0;;
+        * ) return 1;;
+    esac
+}
+
+# Install AllStarLink 3
+if ask "Would you like to install AllStarLink 3?"; then
+    cd /tmp
+    wget https://repo.allstarlink.org/public/asl-apt-repos.deb12_all.deb
+    export PATH=$PATH:/usr/local/sbin:/usr/sbin:/sbin
+    dpkg -i asl-apt-repos.deb12_all.deb
+    apt update
+    apt install -y asl3
+fi
+
+# Install AllMon3
+if ask "Would you like to install AllMon3?"; then
+    cd /tmp
+    wget https://repo.allstarlink.org/public/asl-apt-repos.deb12_all.deb
+    export PATH=$PATH:/usr/local/sbin:/usr/sbin:/sbin
+    dpkg -i asl-apt-repos.deb12_all.deb
+    apt update && apt upgrade -y
+    apt install -y allmon3
+fi
+
+# Install Supermon 7.4
+if ask "Would you like to install Supermon 7.4?"; then
+    cd /usr/local/sbin
+    wget "http://2577.asnode.org:43856/supermonASL_fresh_install" -O supermonASL_fresh_install
+    chmod +x supermonASL_fresh_install
+    ./supermonASL_fresh_install
+
+    wget "http://2577.asnode.org:43856/supermonASL_latest_update" -O supermonASL_latest_update
+    chmod +x supermonASL_latest_update
+    ./supermonASL_latest_update
+fi
+
+# Install AllScan
+if ask "Would you like to install AllScan?"; then
+    sudo apt update; sudo apt install php php-sqlite3 php-curl unzip avahi-daemon asl3-tts -y
+    cd ~
+    rm AllScanInstallUpdate.php 2>/dev/null
+    wget 'https://raw.githubusercontent.com/davidgsd/AllScan/main/AllScanInstallUpdate.php'
+    chmod 755 AllScanInstallUpdate.php
+    sudo ./AllScanInstallUpdate.php
+fi
+
+# Install DVSwitch
+if ask "Would you like to install DVSwitch?"; then
+    cd /opt
+    wget http://dvswitch.org/bookworm
+    chmod +x bookworm
+    ./bookworm
+    apt update
+    apt install -y dvswitch-server
+fi
+
+# Install DVSwitch Mode Switcher
+if ask "Would you like to install the DVSwitch Mode Switcher?"; then
+    apt update && apt upgrade -y && apt install -y git nodejs curl
+    cd /opt
+    git clone https://github.com/firealarmss/dvswitch_mode_switcher
+    cd dvswitch_mode_switcher
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+    export NVM_DIR="$HOME/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && \ . "$NVM_DIR/nvm.sh"
+    source ~/.bashrc
+    nvm install 18
+    nvm use 18
+    cp configs/config.example.yml configs/config.yml
+    cp configs/tg_alias.example.yml configs/tg_alias.yml
+    npm install yargs path
+    npm i
+    node index.js -c configs/config.yml
+    cp debian/dvswitch_mode_switcher.service /etc/systemd/system/dvswitch_mode_switcher.service
+    systemctl daemon-reload
+    systemctl enable dvswitch_mode_switcher.service
+    systemctl start dvswitch_mode_switcher.service
+fi
+
+# Advanced Installs
+if ask "Would you like to continue to advanced installs?"; then
+    # Analog Reflector
+    if ask "Would you like to install Analog Reflector?"; then
+        cd /opt
+        apt install -y analog-reflector
+        cd /opt/Analog_Reflector/ssl
+        chmod +x mkcerts.sh
+        ./mkcerts.sh
+    fi
+
+    # WebRX
+    if ask "Would you like to install WebRX?"; then
+        cd /opt
+        git clone https://github.com/firealarmss/allstar2web
+    fi
+
+    # MMDVM Reflector
+    if ask "Would you like to install MMDVM Reflector?"; then
+        apt update && apt upgrade -y && apt install -y git
+        cd /opt
+        git clone https://github.com/firealarmss/MMDVM_Reflector
+        cd MMDVM_Reflector/debian
+        chmod +x install.sh
+        ./install.sh
+        systemctl disable mmdvm_reflector
+    fi
+
+    # DVReflectors
+    if ask "Would you like to install DVReflectors?"; then
+        cd /opt
+        git clone https://github.com/nostar/DVReflectors
+    fi
+
+    # MMDVM CM
+    if ask "Would you like to install MMDVM_CM?"; then
+        cd /opt
+        git clone https://github.com/nostar/MMDVM_CM
+    fi
+fi
+
+# KC3YWT Custom Installs
+if ask "Would you like to continue to KC3YWT custom installs?"; then
+    mkdir -p /etc/asterisk/local
+
+    # Auto Connect Script
+    if ask "Would you like to install Auto Connect to Many?"; then
+        read -p "Enter your AllStarLink node number: " NODE
+        cat > /etc/asterisk/local/autoconnect.sh <<EOF
+#!/bin/bash
+SCRIPT_DIR="\$(cd "\$(dirname "\$0")" && pwd)"
+NODE_LIST_FILE="\$SCRIPT_DIR/autoconnectnodes.txt"
+LOCAL_NODE=$NODE
+ASTERISK_CMD="/usr/sbin/asterisk"
+ACTION=\$1
+cd /etc/asterisk/
+if [[ -z "\$ACTION" ]]; then
+  echo "Usage: \$0 [connect|disconnect]"
+  exit 1
+fi
+if [[ ! -f "\$NODE_LIST_FILE" ]]; then
+  echo "Error: Node list file not found at \$NODE_LIST_FILE"
+  exit 1
+fi
+while IFS= read -r TARGET_NODE; do
+  if [[ ! "\$TARGET_NODE" =~ ^[0-9]+$ ]]; then
+    continue
+  fi
+  if [[ "\$ACTION" == "connect" ]]; then
+    \$ASTERISK_CMD -rx "rpt fun \$LOCAL_NODE *3\$TARGET_NODE"
+    echo "Connected to \$TARGET_NODE"
+  elif [[ "\$ACTION" == "disconnect" ]]; then
+    \$ASTERISK_CMD -rx "rpt fun \$LOCAL_NODE *1\$TARGET_NODE"
+    echo "Disconnected from \$TARGET_NODE"
+  else
+    echo "Invalid action: \$ACTION"
+    exit 1
+  fi
+done < "\$NODE_LIST_FILE"
+EOF
+        chmod +x /etc/asterisk/local/autoconnect.sh
+        touch /etc/asterisk/local/autoconnectnodes.txt
+    fi
+
+    # Easy Connect Script
+    if ask "Would you like to install Easy Connect?"; then
+        read -p "Enter your AllStarLink node number: " NODE2
+        cat > /etc/asterisk/local/nodeconnect.sh <<EOF
+#!/bin/bash
+LOCAL_NODE=$NODE2
+ACTION=\$1
+TARGET_NODE=\$2
+cd /etc/asterisk/
+if [[ -z "\$ACTION" || -z "\$TARGET_NODE" ]]; then
+  echo "Usage: \$0 [connect|disconnect] [target_node_number]"
+  exit 1
+fi
+if ! [[ "\$TARGET_NODE" =~ ^[0-9]+$ && "\$TARGET_NODE" -ge 1000 && "\$TARGET_NODE" -le 1000000 ]]; then
+  echo "Error: Target node must be a number between 1000 and 1000000"
+  exit 1
+fi
+case "\$ACTION" in
+  connect)
+    /usr/sbin/asterisk -rx "rpt fun \$LOCAL_NODE *3\$TARGET_NODE"
+    ;;
+  disconnect)
+    /usr/sbin/asterisk -rx "rpt fun \$LOCAL_NODE *1\$TARGET_NODE"
+    ;;
+  *)
+    echo "Error: Invalid action. Use 'connect' or 'disconnect'"
+    exit 1
+    ;;
+esac
+EOF
+        chmod +x /etc/asterisk/local/nodeconnect.sh
+    fi
+fi
+
+apt update && apt upgrade -y
+echo -e "${GREEN}Installation complete!${RESET}"
