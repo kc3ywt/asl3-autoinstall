@@ -248,6 +248,7 @@ EOF
     fi
 fi
 
+cd /opt
 apt update && apt upgrade -y
 rm /opt/bookworm
 rm -rf /opt/asl3-autoinstall
