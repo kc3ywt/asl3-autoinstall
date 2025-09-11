@@ -39,6 +39,7 @@ if ask "Would you like to install Allstarlink3?"; then
     apt install -y asl3
     clear
 fi
+clear
 
 # Install AllMon3
 if ask "Would you like to install Allmon3?"; then
