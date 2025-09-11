@@ -110,8 +110,9 @@ if ask "Would you like to install the DVSwitch Mode Switcher?"; then
 fi
 
 # Advanced Installs
-if ask "Would you like to continue to advanced installs?"; then
-    # Analog Reflector
+if ask "Would you like to continue to Advanced Installs?"; then
+clear
+# Analog Reflector
     if ask "Would you like to install Analog Reflector?"; then
         cd /opt
         apt install -y analog-reflector
