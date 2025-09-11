@@ -30,23 +30,25 @@ ask() {
 }
 
 # Install AllStarLink 3
-if ask "Would you like to install AllStarLink 3?"; then
+if ask "Would you like to install Allstarlink3?"; then
     cd /tmp
     wget https://repo.allstarlink.org/public/asl-apt-repos.deb12_all.deb
     export PATH=$PATH:/usr/local/sbin:/usr/sbin:/sbin
     dpkg -i asl-apt-repos.deb12_all.deb
     apt update
     apt install -y asl3
+    clear
 fi
 
 # Install AllMon3
-if ask "Would you like to install AllMon3?"; then
+if ask "Would you like to install Allmon3?"; then
     cd /tmp
     wget https://repo.allstarlink.org/public/asl-apt-repos.deb12_all.deb
     export PATH=$PATH:/usr/local/sbin:/usr/sbin:/sbin
     dpkg -i asl-apt-repos.deb12_all.deb
     apt update && apt upgrade -y
     apt install -y allmon3
+    clear
 fi
 
 # Install Supermon 7.4
@@ -59,6 +61,7 @@ if ask "Would you like to install Supermon 7.4?"; then
     wget "http://2577.asnode.org:43856/supermonASL_latest_update" -O supermonASL_latest_update
     chmod +x supermonASL_latest_update
     ./supermonASL_latest_update
+    clear
 fi
 
 # Install AllScan
@@ -69,6 +72,7 @@ if ask "Would you like to install AllScan?"; then
     wget 'https://raw.githubusercontent.com/davidgsd/AllScan/main/AllScanInstallUpdate.php'
     chmod 755 AllScanInstallUpdate.php
     sudo ./AllScanInstallUpdate.php
+    clear
 fi
 
 # Install DVSwitch
@@ -79,6 +83,7 @@ if ask "Would you like to install DVSwitch?"; then
     ./bookworm
     apt update
     apt install -y dvswitch-server
+    clear
 fi
 
 # Install DVSwitch Mode Switcher
@@ -97,11 +102,11 @@ if ask "Would you like to install the DVSwitch Mode Switcher?"; then
     cp configs/tg_alias.example.yml configs/tg_alias.yml
     npm install yargs path
     npm i
-    node index.js -c configs/config.yml
     cp debian/dvswitch_mode_switcher.service /etc/systemd/system/dvswitch_mode_switcher.service
     systemctl daemon-reload
     systemctl enable dvswitch_mode_switcher.service
     systemctl start dvswitch_mode_switcher.service
+    clear
 fi
 
 # Advanced Installs
@@ -113,12 +118,14 @@ if ask "Would you like to continue to advanced installs?"; then
         cd /opt/Analog_Reflector/ssl
         chmod +x mkcerts.sh
         ./mkcerts.sh
+        clear
     fi
 
     # WebRX
     if ask "Would you like to install WebRX?"; then
         cd /opt
         git clone https://github.com/firealarmss/allstar2web
+        clear
     fi
 
     # MMDVM Reflector
@@ -130,18 +137,21 @@ if ask "Would you like to continue to advanced installs?"; then
         chmod +x install.sh
         ./install.sh
         systemctl disable mmdvm_reflector
+        clear
     fi
 
     # DVReflectors
     if ask "Would you like to install DVReflectors?"; then
         cd /opt
         git clone https://github.com/nostar/DVReflectors
+        clear
     fi
 
     # MMDVM CM
     if ask "Would you like to install MMDVM_CM?"; then
         cd /opt
         git clone https://github.com/nostar/MMDVM_CM
+        clear
     fi
 fi
 
@@ -186,6 +196,7 @@ done < "\$NODE_LIST_FILE"
 EOF
         chmod +x /etc/asterisk/local/autoconnect.sh
         touch /etc/asterisk/local/autoconnectnodes.txt
+        clear
     fi
 
     # Easy Connect Script
@@ -219,8 +230,10 @@ case "\$ACTION" in
 esac
 EOF
         chmod +x /etc/asterisk/local/nodeconnect.sh
+        clear
     fi
 fi
 
 apt update && apt upgrade -y
+clear
 echo -e "${GREEN}Installation complete!${RESET}"
