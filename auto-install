@@ -41,7 +41,7 @@ if ask "Would you like to install Allstarlink3?"; then
 fi
 clear
 
-# Install AllMon3
+# Install Allmon3
 if ask "Would you like to install Allmon3?"; then
     cd /tmp
     wget https://repo.allstarlink.org/public/asl-apt-repos.deb12_all.deb
