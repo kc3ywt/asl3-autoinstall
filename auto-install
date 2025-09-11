@@ -156,6 +156,7 @@ clear
         git clone https://github.com/nostar/DVReflectors
         clear
     fi
+clear
 
     # MMDVM CM
     if ask "Would you like to install MMDVM_CM?"; then
