@@ -237,5 +237,6 @@ EOF
 fi
 
 apt update && apt upgrade -y
+rm /opt/bookworm
 clear
 echo -e "${GREEN}Installation complete!${RESET}"
