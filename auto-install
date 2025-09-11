@@ -14,9 +14,9 @@ YELLOW="\e[33m"
 RESET="\e[0m"
 
 # Update & Upgrade
-clear
 echo -e "${GREEN}Updating system packages...${RESET}"
 apt update && apt upgrade -y
+clear
 
 # =============================
 # Function to ask Y/N questions
