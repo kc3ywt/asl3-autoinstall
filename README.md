@@ -10,7 +10,7 @@ Run as root:
 ```bash
 cd /opt
 apt install git
-git clone https://github.com/kc3ywt/Allstarlink3-Auto-Install
+git clone https://github.com/kc3ywt/asl3-autoinstall
 chmod +x 
 ```
 
