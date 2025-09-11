@@ -251,7 +251,7 @@ fi
 
 cd /opt
 apt update && apt upgrade -y
-rm /opt/bookworm
+rm -f /opt/bookworm
 rm -rf /opt/asl3-autoinstall
 clear
 echo -e "${GREEN}Installation complete!${RESET}"
