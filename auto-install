@@ -159,6 +159,7 @@ fi
 # KC3YWT Custom Installs
 if ask "Would you like to continue to KC3YWT custom installs?"; then
     mkdir -p /etc/asterisk/local
+    clear
 
     # Auto Connect Script
     if ask "Would you like to install Auto Connect to Many?"; then
