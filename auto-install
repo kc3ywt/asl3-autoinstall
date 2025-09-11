@@ -249,8 +249,8 @@ EOF
     fi
 fi
 
-cd /opt
 apt update && apt upgrade -y
+cd /opt
 rm -f /opt/bookworm
 rm -rf /opt/asl3-autoinstall
 clear
