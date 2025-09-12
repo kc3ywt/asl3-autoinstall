@@ -16,8 +16,8 @@ chmod +x auto-install
 ./auto-install
 ```
 
-
-
+#### Setup Documentation:
+[Documentation Doc](https://docs.google.com/document/d/1PZoMYH_olobUjN0onODIl13_yUa9nOlYoQVVJdNnpJo/edit?usp=sharing)
 
 
 
