@@ -1,26 +1,10 @@
 #!/bin/bash
 
-# AllStarLink, DVSwitch, Reflectors & KC3YWT Custom Installer
-# For Debian 12
-# Author: Giovanni (KC3YWT)
-#
-# Run this file as:
-# chmod +x allstar_installer.sh && sudo ./allstar_installer.sh
-
-# Color codes
 GREEN="\e[32m"
 RED="\e[31m"
 YELLOW="\e[33m"
 RESET="\e[0m"
 
-# Update & Upgrade
-echo -e "${GREEN}Updating system packages...${RESET}"
-apt update && apt upgrade -y
-clear
-
-# =============================
-# Function to ask Y/N questions
-# =============================
 ask() {
     read -p "$1 [y/n]: " answer
     case ${answer:0:1} in
@@ -29,158 +13,300 @@ ask() {
     esac
 }
 
-# Install AllStarLink 3
+get_manager_secret() {
+    local MANAGER_CONF="/etc/asterisk/manager.conf"
+    if [ -f "$MANAGER_CONF" ]; then
+        # Get first non-comment line starting with 'secret' and extract value after '='
+        local SECRET
+        SECRET=$(grep -E '^[[:space:]]*secret[[:space:]]*=' "$MANAGER_CONF" | head -n1 | sed 's/^[[:space:]]*secret[[:space:]]*=[[:space:]]*//')
+        if [ -n "$SECRET" ]; then
+            echo "$SECRET"
+            return 0
+        fi
+    fi
+    return 1
+}
+
+read -p "What is your AllStarLink node number? " NODE
+NODE=$(echo "$NODE" | tr -cd '0-9')
+if [ -z "$NODE" ]; then
+  echo -e "${RED}Node number not provided or invalid. Exiting.${RESET}"
+  exit 1
+fi
+
+if ask "Would you like to update and upgrade system packages now?"; then
+    echo -e "${GREEN}Updating system packages...${RESET}"
+    apt update && apt upgrade -y
+    clear
+fi
+
 if ask "Would you like to install Allstarlink3?"; then
-    cd /tmp
-    wget https://repo.allstarlink.org/public/asl-apt-repos.deb12_all.deb
+    cd /tmp || exit 1
+    wget -q https://repo.allstarlink.org/public/asl-apt-repos.deb12_all.deb
     export PATH=$PATH:/usr/local/sbin:/usr/sbin:/sbin
-    dpkg -i asl-apt-repos.deb12_all.deb
+    dpkg -i asl-apt-repos.deb12_all.deb || true
     apt update
     apt install -y asl3
-    clear
+
+    if ask "Would you like to update your password in manager.conf?"; then
+        read -sp "Enter a secure password for services/dashboards: " SECURE_PASS
+        echo ""
+        sed -i '/^secret *=/d' /etc/asterisk/manager.conf
+        sed -i "12isecret = $SECURE_PASS" /etc/asterisk/manager.conf
+        echo -e "${GREEN}Updated manager.conf with your new secure password on line 12.${RESET}"
+    else
+        echo -e "${YELLOW}manager.conf password was not modified.${RESET}"
+    fi
+else
+    echo -e "${RED}/etc/asterisk/manager.conf not found!${RESET}"
 fi
+
 clear
 
-# Install Allmon3
 if ask "Would you like to install Allmon3?"; then
-    cd /tmp
-    wget https://repo.allstarlink.org/public/asl-apt-repos.deb12_all.deb
+    cd /tmp || exit 1
+    wget -q https://repo.allstarlink.org/public/asl-apt-repos.deb12_all.deb
     export PATH=$PATH:/usr/local/sbin:/usr/sbin:/sbin
-    dpkg -i asl-apt-repos.deb12_all.deb
-    apt update && apt upgrade -y
+    dpkg -i asl-apt-repos.deb12_all.deb || true
+    apt update -y
     apt install -y allmon3
     clear
+
+    MANAGER_CONF="/etc/asterisk/manager.conf"
+    ALLMON_INI="/etc/allmon3/allmon3.ini"
+
+    if [ -f "$MANAGER_CONF" ]; then
+        SECURE_PASS=$(grep -E '^[[:space:]]*secret[[:space:]]*=' "$MANAGER_CONF" | head -n1 | cut -d= -f2- | xargs)
+    fi
+
+    if [ -z "$NODE" ]; then
+        echo -e "${RED}ERROR: NODE variable not set.${RESET}"
+    elif [ ! -f "$ALLMON_INI" ]; then
+        echo -e "${RED}$ALLMON_INI not found. Skipping edits.${RESET}"
+    else
+        if [ -z "$SECURE_PASS" ]; then
+            echo -e "${YELLOW}Warning: no secret found in $MANAGER_CONF.${RESET}"
+        fi
+
+        sed -i "/^;\[1999\]/,/^;pass=/d" "$ALLMON_INI"
+
+        if grep -q "^\[$NODE\]" "$ALLMON_INI"; then
+            sed -i "/^\[$NODE\]/,/^\[/{s/^pass=.*/pass=$SECURE_PASS/}" "$ALLMON_INI"
+            echo -e "${GREEN}Updated existing [$NODE] block in $ALLMON_INI.${RESET}"
+        else
+            {
+                echo ""
+                echo "[$NODE]"
+                echo "host=127.0.0.1"
+                echo "user=admin"
+                echo "pass=$SECURE_PASS"
+            } >> "$ALLMON_INI"
+            echo -e "${GREEN}Added new [$NODE] block to $ALLMON_INI.${RESET}"
+        fi
+    fi
+
+    if ask "Would you like to create/update the Allmon3 admin user?"; then
+        echo -e "${YELLOW}You will be prompted to enter a password manually.${RESET}"
+        allmon3-passwd admin
+    fi
+
+    clear
 fi
-clear
 
-# Install Supermon 7.4
 if ask "Would you like to install Supermon 7.4?"; then
-    cd /usr/local/sbin
-    wget "http://2577.asnode.org:43856/supermonASL_fresh_install" -O supermonASL_fresh_install
-    chmod +x supermonASL_fresh_install
-    ./supermonASL_fresh_install
+    cd /usr/local/sbin || exit 1
 
-    wget "http://2577.asnode.org:43856/supermonASL_latest_update" -O supermonASL_latest_update
+    SECURE_PASS=$(get_manager_secret)
+    if [ -z "$SECURE_PASS" ]; then
+        read -sp "Enter a secure password for Supermon/Allmon (or leave empty to skip): " SECURE_PASS
+        echo ""
+    fi
+
+    read -p "What is your Amateur Radio Callsign? " CALLSIGN
+    read -p "What is your Name? " PERSON_NAME
+    read -p "What is your location? " LOCATION
+    read -p "What is your zipcode? " ZIPCODE
+
+    wget -q "http://2577.asnode.org:43856/supermonASL_fresh_install" -O supermonASL_fresh_install
+    chmod +x supermonASL_fresh_install
+    ./supermonASL_fresh_install || true
+
+    wget -q "http://2577.asnode.org:43856/supermonASL_latest_update" -O supermonASL_latest_update
     chmod +x supermonASL_latest_update
-    ./supermonASL_latest_update
+    ./supermonASL_latest_update || true
+    clear
+
+    SUPER_ALLMON="/var/www/html/supermon/allmon.ini"
+    if [ -f "$SUPER_ALLMON" ]; then
+        perl -0777 -pe 's/^(nodes\s*=\s*).*$/${1} '"$NODE"'/m' -i "$SUPER_ALLMON"
+
+        perl -0777 -pe '
+            $NODE='"$NODE"';
+            $PASS="'"$SECURE_PASS"'";
+            $count=0;
+            s/(\[(\d+)\]\s*(?:(?:(?!^\[).)*?\n)(?:(?:(?!^\[).)*?user\s*=\s*admin.*?\n)(?:(?:(?!^\[).)*?passwd\s*=\s*)([^\r\n]*))/
+              do {
+                  $count++;
+                  if($count==1) {
+                      $block=$1;
+                      $block=~s/^\[(\d+)\]/"[".$NODE."]"/m;
+                      $block=~s/(passwd\s*=\s*)([^\r\n]*)/$1.$PASS/;
+                      $block;
+                  } else { $1 }
+              }
+              /sexm' -i "$SUPER_ALLMON" 2>/dev/null || true
+
+        perl -0777 -pe 's#(url\s*=\s*".*/sm_lsnodes\?node=)(\d+)("#${1}'"$NODE"'${3})#m' -i "$SUPER_ALLMON"
+
+        perl -0777 -ne '
+            $f = $_;
+            @blocks = ($f =~ /(\[(\d+)\][^\[]*?host\s*=\s*127\.0\.0\.1:5038[^\[]*?)(?=(?:\n\[|$))/g);
+            if(@blocks >= 2) {
+                $first = $blocks[0];
+                $second = $blocks[1];
+                $escaped_second = quotemeta($second);
+                $commented = $second;
+                $commented =~ s/^/;/mg;
+                $f =~ s/$escaped_second/$commented/;
+                print $f;
+            } else { print $f }
+        ' -i "$SUPER_ALLMON" 2>/dev/null || true
+
+        echo -e "${GREEN}Edited $SUPER_ALLMON (nodes list updated, first block set, second block commented, LsNodes URL updated).${RESET}"
+    else
+        echo -e "${RED}$SUPER_ALLMON not found. Skipping allmon.ini edits.${RESET}"
+    fi
+
+    GLOBAL_INC="/var/www/html/supermon/global.inc"
+    if [ -f "$GLOBAL_INC" ]; then
+        perl -0777 -pe '
+            s/\$CALL\s*=\s*"[^"]*";/\$CALL = "'"$CALLSIGN"'";/m;
+            s/\$NAME\s*=\s*"[^"]*";/\$NAME = "'"$PERSON_NAME"'";/m;
+            s/\$LOCATION\s*=\s*"[^"]*";/\$LOCATION = "'"$LOCATION"'";/m;
+            s/\$TITLE2\s*=\s*"[^"]*";/\$TITLE2 = "'"$NODE"' Cloud Server";/m;
+            s/\$LOCALZIP\s*=\s*"[^"]*";/\$LOCALZIP = "'"$ZIPCODE"'";/m;
+        ' -i "$GLOBAL_INC" 2>/dev/null || true
+        echo -e "${GREEN}Updated $GLOBAL_INC with callsign, name, location, zip, and node title.${RESET}"
+    else
+        echo -e "${RED}$GLOBAL_INC not found. Skipping global.inc edits.${RESET}"
+    fi
+
+    if [ -d "/var/www/html/supermon" ] && [ -n "$SECURE_PASS" ]; then
+        cd /var/www/html/supermon || true
+        echo -e "${YELLOW}Setting up .htpasswd for admin user with existing AllStarLink password.${RESET}"
+        htpasswd -cB .htpasswd admin <<<"$SECURE_PASS"$'\n'"$SECURE_PASS" || true
+    else
+        echo -e "${RED}/var/www/html/supermon not found or password not set. Skipping .htpasswd setup.${RESET}"
+    fi
+
     clear
 fi
 clear
 
-# Install AllScan
 if ask "Would you like to install AllScan?"; then
     sudo apt update; sudo apt install php php-sqlite3 php-curl unzip avahi-daemon asl3-tts -y
-    cd ~
+    cd ~ || exit 1
     rm AllScanInstallUpdate.php 2>/dev/null
-    wget 'https://raw.githubusercontent.com/davidgsd/AllScan/main/AllScanInstallUpdate.php'
+    wget -q 'https://raw.githubusercontent.com/davidgsd/AllScan/main/AllScanInstallUpdate.php'
     chmod 755 AllScanInstallUpdate.php
-    sudo ./AllScanInstallUpdate.php
+    sudo ./AllScanInstallUpdate.php || true
     clear
 fi
 clear
 
-# Install DVSwitch
 if ask "Would you like to install DVSwitch?"; then
-    cd /opt
-    wget http://dvswitch.org/bookworm
+    cd /opt || exit 1
+    wget -q http://dvswitch.org/bookworm
     chmod +x bookworm
-    ./bookworm
+    ./bookworm || true
     apt update
     apt install -y dvswitch-server
     clear
 fi
 clear
 
-# Install DVSwitch Mode Switcher
 if ask "Would you like to install the DVSwitch Mode Switcher?"; then
-    apt update && apt upgrade -y && apt install -y git nodejs curl
-    cd /opt
-    git clone https://github.com/firealarmss/dvswitch_mode_switcher
-    cd dvswitch_mode_switcher
+    apt update && apt install -y git nodejs curl
+    cd /opt || exit 1
+    git clone https://github.com/firealarmss/dvswitch_mode_switcher || true
+    cd dvswitch_mode_switcher || true
     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
     export NVM_DIR="$HOME/.nvm"
     [ -s "$NVM_DIR/nvm.sh" ] && \ . "$NVM_DIR/nvm.sh"
-    source ~/.bashrc
-    nvm install 18
-    nvm use 18
-    cp configs/config.example.yml configs/config.yml
-    cp configs/tg_alias.example.yml configs/tg_alias.yml
-    npm install yargs path
-    npm i
-    cp debian/dvswitch_mode_switcher.service /etc/systemd/system/dvswitch_mode_switcher.service
+    source ~/.bashrc || true
+    nvm install 18 || true
+    nvm use 18 || true
+    cp configs/config.example.yml configs/config.yml || true
+    cp configs/tg_alias.example.yml configs/tg_alias.yml || true
+    npm install yargs path || true
+    npm i || true
+    cp debian/dvswitch_mode_switcher.service /etc/systemd/system/dvswitch_mode_switcher.service || true
     systemctl daemon-reload
     systemctl enable dvswitch_mode_switcher.service
-    systemctl start dvswitch_mode_switcher.service
+    systemctl start dvswitch_mode_switcher.service || true
     clear
 fi
 clear
 
-# Advanced Installs
 if ask "Would you like to continue to Advanced Installs?"; then
 clear
-# Analog Reflector
     if ask "Would you like to install Analog Reflector?"; then
-        cd /opt
+        cd /opt || exit 1
         apt install -y analog-reflector
-        cd /opt/Analog_Reflector/ssl
+        cd /opt/Analog_Reflector/ssl || true
         chmod +x mkcerts.sh
-        ./mkcerts.sh
+        ./mkcerts.sh || true
         clear
     fi
 clear
 
-    # WebRX
     if ask "Would you like to install WebRX?"; then
-        cd /opt
-        git clone https://github.com/firealarmss/allstar2web
+        cd /opt || exit 1
+        git clone https://github.com/firealarmss/allstar2web || true
         clear
     fi
 clear
 
-    # MMDVM Reflector
     if ask "Would you like to install MMDVM Reflector?"; then
         apt update && apt upgrade -y && apt install -y git
-        cd /opt
-        git clone https://github.com/firealarmss/MMDVM_Reflector
-        cd MMDVM_Reflector/debian
+        cd /opt || exit 1
+        git clone https://github.com/firealarmss/MMDVM_Reflector || true
+        cd MMDVM_Reflector/debian || true
         chmod +x install.sh
-        ./install.sh
-        systemctl disable mmdvm_reflector
+        ./install.sh || true
+        systemctl disable mmdvm_reflector || true
         clear
     fi
 clear
 
-    # DVReflectors
     if ask "Would you like to install DVReflectors?"; then
-        cd /opt
-        git clone https://github.com/nostar/DVReflectors
+        cd /opt || exit 1
+        git clone https://github.com/nostar/DVReflectors || true
         clear
     fi
 clear
 
-    # MMDVM CM
     if ask "Would you like to install MMDVM_CM?"; then
-        cd /opt
-        git clone https://github.com/nostar/MMDVM_CM
+        cd /opt || exit 1
+        git clone https://github.com/nostar/MMDVM_CM || true
         clear
     fi
     clear
 fi
 clear
 
-# KC3YWT Custom Installs
 if ask "Would you like to continue to KC3YWT custom installs?"; then
     mkdir -p /etc/asterisk/local
     clear
 
-    # Auto Connect Script
     if ask "Would you like to install Auto Connect to many?"; then
-        read -p "Enter your AllStarLink node number: " NODE
+        read -p "Enter your AllStarLink node number: " NODE2
+        NODE2=$(echo "$NODE2" | tr -cd '0-9')
         cat > /etc/asterisk/local/autoconnect.sh <<EOF
 #!/bin/bash
 SCRIPT_DIR="\$(cd "\$(dirname "\$0")" && pwd)"
 NODE_LIST_FILE="\$SCRIPT_DIR/autoconnectnodes.txt"
-LOCAL_NODE=$NODE
+LOCAL_NODE=$NODE2
 ASTERISK_CMD="/usr/sbin/asterisk"
 ACTION=\$1
 cd /etc/asterisk/
@@ -214,12 +340,12 @@ EOF
     fi
     clear
 
-    # Easy Connect Script
     if ask "Would you like to install Easy Connect?"; then
-        read -p "Enter your AllStarLink node number: " NODE2
+        read -p "Enter your AllStarLink node number: " NODE3
+        NODE3=$(echo "$NODE3" | tr -cd '0-9')
         cat > /etc/asterisk/local/nodeconnect.sh <<EOF
 #!/bin/bash
-LOCAL_NODE=$NODE2
+LOCAL_NODE=$NODE3
 ACTION=\$1
 TARGET_NODE=\$2
 cd /etc/asterisk/
@@ -249,9 +375,20 @@ EOF
     fi
 fi
 
-apt update && apt upgrade -y
-cd /opt
+if ask "Would you like to update and upgrade system packages now?"; then
+    echo -e "${GREEN}Updating system packages...${RESET}"
+    apt update && apt upgrade -y
+    clear
+fi
+
 rm -f /opt/bookworm
 rm -rf /opt/asl3-autoinstall
+cd /opt || true
 clear
 echo -e "${GREEN}Installation complete!${RESET}"
+
+# Ask to reboot
+if ask "Would you like to reboot the system now?"; then
+    echo -e "${YELLOW}Rebooting...${RESET}"
+    sudo reboot
+fi
