@@ -63,55 +63,55 @@ fi
 
 clear
 
-if ask "Would you like to install Allmon3?"; then
-    cd /tmp || exit 1
-    wget -q https://repo.allstarlink.org/public/asl-apt-repos.deb12_all.deb
-    export PATH=$PATH:/usr/local/sbin:/usr/sbin:/sbin
-    dpkg -i asl-apt-repos.deb12_all.deb || true
-    apt update -y
-    apt install -y allmon3
-    clear
-
-    MANAGER_CONF="/etc/asterisk/manager.conf"
-    ALLMON_INI="/etc/allmon3/allmon3.ini"
-
-    if [ -f "$MANAGER_CONF" ]; then
-        SECURE_PASS=$(grep -E '^[[:space:]]*secret[[:space:]]*=' "$MANAGER_CONF" | head -n1 | cut -d= -f2- | xargs)
-    fi
-
-    if [ -z "$NODE" ]; then
-        echo -e "${RED}ERROR: NODE variable not set.${RESET}"
-    elif [ ! -f "$ALLMON_INI" ]; then
-        echo -e "${RED}$ALLMON_INI not found. Skipping edits.${RESET}"
-    else
-        if [ -z "$SECURE_PASS" ]; then
-            echo -e "${YELLOW}Warning: no secret found in $MANAGER_CONF.${RESET}"
+    if ask "Would you like to install Allmon3?"; then
+        cd /tmp || exit 1
+        wget -q https://repo.allstarlink.org/public/asl-apt-repos.deb12_all.deb
+        export PATH=$PATH:/usr/local/sbin:/usr/sbin:/sbin
+        dpkg -i asl-apt-repos.deb12_all.deb || true
+        apt update -y
+        apt install -y allmon3
+        clear
+    
+        MANAGER_CONF="/etc/asterisk/manager.conf"
+        ALLMON_INI="/etc/allmon3/allmon3.ini"
+    
+        if [ -f "$MANAGER_CONF" ]; then
+            SECURE_PASS=$(grep -E '^[[:space:]]*secret[[:space:]]*=' "$MANAGER_CONF" | head -n1 | cut -d= -f2- | xargs)
         fi
-
-        sed -i "/^;\[1999\]/,/^;pass=/d" "$ALLMON_INI"
-
-        if grep -q "^\[$NODE\]" "$ALLMON_INI"; then
-            sed -i "/^\[$NODE\]/,/^\[/{s/^pass=.*/pass=$SECURE_PASS/}" "$ALLMON_INI"
-            echo -e "${GREEN}Updated existing [$NODE] block in $ALLMON_INI.${RESET}"
+    
+        if [ -z "$NODE" ]; then
+            echo -e "${RED}ERROR: NODE variable not set.${RESET}"
+        elif [ ! -f "$ALLMON_INI" ]; then
+            echo -e "${RED}$ALLMON_INI not found. Skipping edits.${RESET}"
         else
-            {
-                echo ""
-                echo "[$NODE]"
-                echo "host=127.0.0.1"
-                echo "user=admin"
-                echo "pass=$SECURE_PASS"
-            } >> "$ALLMON_INI"
-            echo -e "${GREEN}Added new [$NODE] block to $ALLMON_INI.${RESET}"
+            if [ -z "$SECURE_PASS" ]; then
+                echo -e "${YELLOW}Warning: no secret found in $MANAGER_CONF.${RESET}"
+            fi
+    
+            sed -i "/^;\[1999\]/,/^;pass=/d" "$ALLMON_INI"
+    
+            if grep -q "^\[$NODE\]" "$ALLMON_INI"; then
+                sed -i "/^\[$NODE\]/,/^\[/{s/^pass=.*/pass=$SECURE_PASS/}" "$ALLMON_INI"
+                echo -e "${GREEN}Updated existing [$NODE] block in $ALLMON_INI.${RESET}"
+            else
+                {
+                    echo ""
+                    echo "[$NODE]"
+                    echo "host=127.0.0.1"
+                    echo "user=admin"
+                    echo "pass=$SECURE_PASS"
+                } >> "$ALLMON_INI"
+                echo -e "${GREEN}Added new [$NODE] block to $ALLMON_INI.${RESET}"
+            fi
         fi
+    
+        if ask "Would you like to create/update the Allmon3 admin user?"; then
+            echo -e "${YELLOW}You will be prompted to enter a password manually.${RESET}"
+            allmon3-passwd admin
+        fi
+    
+        clear
     fi
-
-    if ask "Would you like to create/update the Allmon3 admin user?"; then
-        echo -e "${YELLOW}You will be prompted to enter a password manually.${RESET}"
-        allmon3-passwd admin
-    fi
-
-    clear
-fi
 
 if ask "Would you like to install Supermon 7.4?"; then
     cd /usr/local/sbin || exit 1
@@ -299,14 +299,12 @@ if ask "Would you like to continue to KC3YWT custom installs?"; then
     mkdir -p /etc/asterisk/local
     clear
 
-    if ask "Would you like to install Auto Connect to many?"; then
-        read -p "Enter your AllStarLink node number: " NODE2
-        NODE2=$(echo "$NODE2" | tr -cd '0-9')
-        cat > /etc/asterisk/local/autoconnect.sh <<EOF
+if ask "Would you like to install Auto Connect to many?"; then
+    cat > /etc/asterisk/local/autoconnect.sh <<EOF
 #!/bin/bash
 SCRIPT_DIR="\$(cd "\$(dirname "\$0")" && pwd)"
 NODE_LIST_FILE="\$SCRIPT_DIR/autoconnectnodes.txt"
-LOCAL_NODE=$NODE2
+LOCAL_NODE=$NODE
 ASTERISK_CMD="/usr/sbin/asterisk"
 ACTION=\$1
 cd /etc/asterisk/
@@ -334,18 +332,16 @@ while IFS= read -r TARGET_NODE; do
   fi
 done < "\$NODE_LIST_FILE"
 EOF
-        chmod +x /etc/asterisk/local/autoconnect.sh
-        touch /etc/asterisk/local/autoconnectnodes.txt
-        clear
-    fi
+    chmod +x /etc/asterisk/local/autoconnect.sh
+    touch /etc/asterisk/local/autoconnectnodes.txt
     clear
+fi
+clear
 
-    if ask "Would you like to install Easy Connect?"; then
-        read -p "Enter your AllStarLink node number: " NODE3
-        NODE3=$(echo "$NODE3" | tr -cd '0-9')
-        cat > /etc/asterisk/local/nodeconnect.sh <<EOF
+if ask "Would you like to install Easy Connect?"; then
+    cat > /etc/asterisk/local/nodeconnect.sh <<EOF
 #!/bin/bash
-LOCAL_NODE=$NODE3
+LOCAL_NODE=$NODE
 ACTION=\$1
 TARGET_NODE=\$2
 cd /etc/asterisk/
@@ -370,9 +366,8 @@ case "\$ACTION" in
     ;;
 esac
 EOF
-        chmod +x /etc/asterisk/local/nodeconnect.sh
-        clear
-    fi
+    chmod +x /etc/asterisk/local/nodeconnect.sh
+    clear
 fi
 
 if ask "Would you like to update and upgrade system packages now?"; then
