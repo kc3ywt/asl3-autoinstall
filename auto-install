@@ -26,6 +26,7 @@ get_manager_secret() {
     fi
     return 1
 }
+clear
 
 read -p "What is your AllStarLink node number? " NODE
 NODE=$(echo "$NODE" | tr -cd '0-9')
