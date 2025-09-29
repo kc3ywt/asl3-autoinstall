@@ -309,6 +309,7 @@ clear
 if ask "Would you like to continue to KC3YWT custom installs?"; then
     mkdir -p /etc/asterisk/local
     clear
+fi
 
 if ask "Would you like to install Auto Connect to many?"; then
     cat > /etc/asterisk/local/autoconnect.sh <<EOF
