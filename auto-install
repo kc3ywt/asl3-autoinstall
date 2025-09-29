@@ -212,7 +212,7 @@ if ask "Would you like to install Supermon?"; then
 
     clear
 fi
-
+clear
 
 if ask "Would you like to install AllScan?"; then
     sudo apt update; sudo apt install php php-sqlite3 php-curl unzip avahi-daemon asl3-tts -y
