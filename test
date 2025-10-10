@@ -266,43 +266,44 @@ clear
         clear
     fi
     clear
+fi
+clear
 
-    if ask "Would you like to continue to Advanced Options?"; then
+if ask "Would you like to continue to Advanced Options?"; then
+    clear
+    
+    if ask "Would you like to add a user to sudo without password?"; then
         clear
-        
-        if ask "Would you like to add a user to sudo without password?"; then
-            clear
-            apt install -y sudo
-            read -p "What user do you want to add to sudo? " SUDO_USER
-            if [ -n "$SUDO_USER" ]; then
-                /usr/sbin/usermod -aG sudo "$SUDO_USER"
-                echo "$SUDO_USER ALL=(ALL:ALL) NOPASSWD: ALL" >> /etc/sudoers.d/$SUDO_USER
-                chmod 0440 /etc/sudoers.d/$SUDO_USER
-                echo -e "${GREEN}User $SUDO_USER added to sudo with NOPASSWD privileges.${RESET}"
-                sleep 1
-            else
-                echo -e "${RED}No username provided. Skipping.${RESET}"
-                sleep 1
-            fi
-            clear
-        fi
-        clear
-
-        if ask "Would you like to allow root login via SSH?"; then
-            clear
-            if [ -f /etc/ssh/sshd_config ]; then
-                sed -i 's/^#*PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
-                systemctl restart sshd 2>/dev/null || systemctl restart ssh 2>/dev/null
-                echo -e "${GREEN}Root login enabled in SSH configuration.${RESET}"
-                sleep 1
-            else
-                echo -e "${RED}/etc/ssh/sshd_config not found.${RESET}"
-                sleep 1
-            fi
-            clear
+        apt install -y sudo
+        read -p "What user do you want to add to sudo? " SUDO_USER
+        if [ -n "$SUDO_USER" ]; then
+            /usr/sbin/usermod -aG sudo "$SUDO_USER"
+            echo "$SUDO_USER ALL=(ALL:ALL) NOPASSWD: ALL" >> /etc/sudoers.d/$SUDO_USER
+            chmod 0440 /etc/sudoers.d/$SUDO_USER
+            echo -e "${GREEN}User $SUDO_USER added to sudo with NOPASSWD privileges.${RESET}"
+            sleep 1
+        else
+            echo -e "${RED}No username provided. Skipping.${RESET}"
+            sleep 1
         fi
         clear
     fi
+    clear
+
+    if ask "Would you like to allow root login via SSH?"; then
+        clear
+        if [ -f /etc/ssh/sshd_config ]; then
+            sed -i 's/^#*PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+            systemctl restart sshd 2>/dev/null || systemctl restart ssh 2>/dev/null
+            echo -e "${GREEN}Root login enabled in SSH configuration.${RESET}"
+            sleep 1
+        else
+            echo -e "${RED}/etc/ssh/sshd_config not found.${RESET}"
+            sleep 1
+        fi
+        clear
+    fi
+    clear
 fi
 clear
 
