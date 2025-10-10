@@ -63,15 +63,12 @@ if ask "Would you like to install Allstarlink3?"; then
     clear
 fi
 
-# REMOVED: The else clause was incorrect - it displayed an error even when the user said "no"
-# The manager.conf check should only happen if the user chose to install Allstarlink3
-
 if ask "Would you like to install Allmon3?"; then
     cd /tmp || exit 1
     wget -q https://repo.allstarlink.org/public/asl-apt-repos.deb12_all.deb
     export PATH=$PATH:/usr/local/sbin:/usr/sbin:/sbin
     dpkg -i asl-apt-repos.deb12_all.deb || true
-    apt update -y  # FIXED: Changed to "apt update" (no -y flag needed for update)
+    apt update
     apt install -y allmon3
     clear
 
@@ -133,7 +130,8 @@ if ask "Would you like to install Supermon?"; then
 fi
 
 if ask "Would you like to install AllScan?"; then
-    sudo apt update; sudo apt install -y php php-sqlite3 php-curl unzip avahi-daemon asl3-tts  # FIXED: Removed semicolon after -y
+    sudo apt update
+    sudo apt install -y php php-sqlite3 php-curl unzip avahi-daemon asl3-tts
     cd ~ || exit 1
     rm AllScanInstallUpdate.php 2>/dev/null
     wget -q 'https://raw.githubusercontent.com/davidgsd/AllScan/main/AllScanInstallUpdate.php'
@@ -158,10 +156,10 @@ if ask "Would you like to install the DVSwitch Mode Switcher?"; then
     apt update && apt install -y git nodejs curl
     cd /opt || exit 1
     git clone https://github.com/firealarmss/dvswitch_mode_switcher || true
-    cd dvswitch_mode_switcher || true  # FIXED: Changed to "|| true"
+    cd dvswitch_mode_switcher || true
     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
     export NVM_DIR="$HOME/.nvm"
-    [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"  # FIXED: Removed backslash
+    [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
     source ~/.bashrc || true
     nvm install 18 || true
     nvm use 18 || true
@@ -221,16 +219,44 @@ clear
         clear
     fi
     clear
+
+    if ask "Would you like to continue to Advanced Options?"; then
+        clear
+        
+        if ask "Would you like to add a user to sudo without password?"; then
+            apt install -y sudo
+            read -p "What user do you want to add to sudo? " SUDO_USER
+            if [ -n "$SUDO_USER" ]; then
+                /usr/sbin/usermod -aG sudo "$SUDO_USER"
+                echo "$SUDO_USER ALL=(ALL:ALL) NOPASSWD: ALL" >> /etc/sudoers.d/$SUDO_USER
+                chmod 0440 /etc/sudoers.d/$SUDO_USER
+                echo -e "${GREEN}User $SUDO_USER added to sudo with NOPASSWD privileges.${RESET}"
+            else
+                echo -e "${RED}No username provided. Skipping.${RESET}"
+            fi
+            clear
+        fi
+
+        if ask "Would you like to allow root login via SSH?"; then
+            if [ -f /etc/ssh/sshd_config ]; then
+                sed -i 's/^#*PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+                systemctl restart sshd 2>/dev/null || systemctl restart ssh 2>/dev/null
+                echo -e "${GREEN}Root login enabled in SSH configuration.${RESET}"
+            else
+                echo -e "${RED}/etc/ssh/sshd_config not found.${RESET}"
+            fi
+            clear
+        fi
+    fi
 fi
 clear
 
 if ask "Would you like to continue to KC3YWT custom installs?"; then
     mkdir -p /etc/asterisk/local
     clear
-fi
 
-if ask "Would you like to install Auto Connect to many?"; then
-    cat > /etc/asterisk/local/autoconnect.sh <<EOF
+    if ask "Would you like to install Auto Connect to many?"; then
+        cat > /etc/asterisk/local/autoconnect.sh <<EOF
 #!/bin/bash
 SCRIPT_DIR="\$(cd "\$(dirname "\$0")" && pwd)"
 NODE_LIST_FILE="\$SCRIPT_DIR/autoconnectnodes.txt"
@@ -262,14 +288,14 @@ while IFS= read -r TARGET_NODE; do
   fi
 done < "\$NODE_LIST_FILE"
 EOF
-    chmod +x /etc/asterisk/local/autoconnect.sh
-    touch /etc/asterisk/local/autoconnectnodes.txt
-    clear
-fi
-clear
+        chmod +x /etc/asterisk/local/autoconnect.sh
+        touch /etc/asterisk/local/autoconnectnodes.txt
+        echo -e "${GREEN}Auto Connect script installed.${RESET}"
+        clear
+    fi
 
-if ask "Would you like to install Easy Connect?"; then
-    cat > /etc/asterisk/local/nodeconnect.sh <<EOF
+    if ask "Would you like to install Easy Connect?"; then
+        cat > /etc/asterisk/local/nodeconnect.sh <<EOF
 #!/bin/bash
 LOCAL_NODE=$NODE
 ACTION=\$1
@@ -296,9 +322,12 @@ case "\$ACTION" in
     ;;
 esac
 EOF
-    chmod +x /etc/asterisk/local/nodeconnect.sh
-    clear
+        chmod +x /etc/asterisk/local/nodeconnect.sh
+        echo -e "${GREEN}Easy Connect script installed.${RESET}"
+        clear
+    fi
 fi
+clear
 
 if ask "Would you like to update and upgrade system packages now?"; then
     echo -e "${GREEN}Updating system packages...${RESET}"
@@ -306,10 +335,14 @@ if ask "Would you like to update and upgrade system packages now?"; then
     clear
 fi
 
-rm -f /opt/bookworm
-rm -rf /opt/asl3-autoinstall
-cd /opt || true
-clear
+if ask "Would you like to remove the auto install files?"; then
+    rm -f /opt/bookworm
+    rm -rf /opt/asl3-autoinstall
+    cd /opt || true
+    echo -e "${GREEN}Auto install files removed.${RESET}"
+    clear
+fi
+
 echo -e "${GREEN}Installation complete!${RESET}"
 
 # Ask to reboot
