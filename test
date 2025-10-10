@@ -37,39 +37,51 @@ fi
 clear
 
 if ask "Would you like to update and upgrade system packages now?"; then
+    clear
     echo -e "${GREEN}Updating system packages...${RESET}"
     apt update && apt upgrade -y
+    sleep 1
 fi
 clear
 
 if ask "Would you like to install Allstarlink3?"; then
+    clear
     cd /tmp || exit 1
     wget -q https://repo.allstarlink.org/public/asl-apt-repos.deb12_all.deb
     export PATH=$PATH:/usr/local/sbin:/usr/sbin:/sbin
     dpkg -i asl-apt-repos.deb12_all.deb || true
     apt update
     apt install -y asl3
+    echo -e "${GREEN}Allstarlink3 installed successfully.${RESET}"
+    sleep 1
     clear
 
     if ask "Would you like to update your password in manager.conf?"; then
+        clear
         read -sp "Enter a secure password for services/dashboards: " SECURE_PASS
         echo ""
         sed -i '/^secret *=/d' /etc/asterisk/manager.conf
         sed -i "12isecret = $SECURE_PASS" /etc/asterisk/manager.conf
         echo -e "${GREEN}Updated manager.conf with your new secure password on line 12.${RESET}"
+        sleep 1
     else
         echo -e "${YELLOW}manager.conf password was not modified.${RESET}"
+        sleep 1
     fi
     clear
 fi
+clear
 
 if ask "Would you like to install Allmon3?"; then
+    clear
     cd /tmp || exit 1
     wget -q https://repo.allstarlink.org/public/asl-apt-repos.deb12_all.deb
     export PATH=$PATH:/usr/local/sbin:/usr/sbin:/sbin
     dpkg -i asl-apt-repos.deb12_all.deb || true
     apt update
     apt install -y allmon3
+    echo -e "${GREEN}Allmon3 installed successfully.${RESET}"
+    sleep 1
     clear
 
     MANAGER_CONF="/etc/asterisk/manager.conf"
@@ -81,11 +93,14 @@ if ask "Would you like to install Allmon3?"; then
 
     if [ -z "$NODE" ]; then
         echo -e "${RED}ERROR: NODE variable not set.${RESET}"
+        sleep 1
     elif [ ! -f "$ALLMON_INI" ]; then
         echo -e "${RED}$ALLMON_INI not found. Skipping edits.${RESET}"
+        sleep 1
     else
         if [ -z "$SECURE_PASS" ]; then
             echo -e "${YELLOW}Warning: no secret found in $MANAGER_CONF.${RESET}"
+            sleep 1
         fi
 
         sed -i "/^;\[1999\]/,/^;pass=/d" "$ALLMON_INI"
@@ -93,6 +108,7 @@ if ask "Would you like to install Allmon3?"; then
         if grep -q "^\[$NODE\]" "$ALLMON_INI"; then
             sed -i "/^\[$NODE\]/,/^\[/{s/^pass=.*/pass=$SECURE_PASS/}" "$ALLMON_INI"
             echo -e "${GREEN}Updated existing [$NODE] block in $ALLMON_INI.${RESET}"
+            sleep 1
         else
             {
                 echo ""
@@ -102,13 +118,17 @@ if ask "Would you like to install Allmon3?"; then
                 echo "pass=$SECURE_PASS"
             } >> "$ALLMON_INI"
             echo -e "${GREEN}Added new [$NODE] block to $ALLMON_INI.${RESET}"
+            sleep 1
         fi
     fi
     clear
 
     if ask "Would you like to create/update the Allmon3 admin user?"; then
+        clear
         echo -e "${YELLOW}You will be prompted to enter a password manually.${RESET}"
+        sleep 1
         allmon3-passwd admin
+        sleep 1
     fi
 
     clear
@@ -116,6 +136,7 @@ fi
 clear
 
 if ask "Would you like to install Supermon?"; then
+    clear
     cd /tmp || exit 1
     wget -q http://2577.asnode.org:43856/supermonASL_fresh_install -O supermonASL_fresh_install
     chmod +x supermonASL_fresh_install
@@ -126,10 +147,13 @@ if ask "Would you like to install Supermon?"; then
     ./supermonASL_latest_update || true
     
     echo -e "${GREEN}Supermon installed. Configuration skipped - please configure manually.${RESET}"
+    sleep 1
     clear
 fi
+clear
 
 if ask "Would you like to install AllScan?"; then
+    clear
     sudo apt update
     sudo apt install -y php php-sqlite3 php-curl unzip avahi-daemon asl3-tts
     cd ~ || exit 1
@@ -137,22 +161,28 @@ if ask "Would you like to install AllScan?"; then
     wget -q 'https://raw.githubusercontent.com/davidgsd/AllScan/main/AllScanInstallUpdate.php'
     chmod 755 AllScanInstallUpdate.php
     sudo ./AllScanInstallUpdate.php || true
+    echo -e "${GREEN}AllScan installed successfully.${RESET}"
+    sleep 1
     clear
 fi
 clear
 
 if ask "Would you like to install DVSwitch?"; then
+    clear
     cd /opt || exit 1
     wget -q http://dvswitch.org/bookworm
     chmod +x bookworm
     ./bookworm || true
     apt update
     apt install -y dvswitch-server
+    echo -e "${GREEN}DVSwitch installed successfully.${RESET}"
+    sleep 1
     clear
 fi
 clear
 
 if ask "Would you like to install the DVSwitch Mode Switcher?"; then
+    clear
     apt update && apt install -y git nodejs curl
     cd /opt || exit 1
     git clone https://github.com/firealarmss/dvswitch_mode_switcher || true
@@ -171,6 +201,8 @@ if ask "Would you like to install the DVSwitch Mode Switcher?"; then
     systemctl daemon-reload
     systemctl enable dvswitch_mode_switcher.service
     systemctl start dvswitch_mode_switcher.service || true
+    echo -e "${GREEN}DVSwitch Mode Switcher installed successfully.${RESET}"
+    sleep 1
     clear
 fi
 clear
@@ -178,23 +210,30 @@ clear
 if ask "Would you like to continue to Advanced Installs?"; then
 clear
     if ask "Would you like to install Analog Reflector?"; then
+        clear
         cd /opt || exit 1
         apt install -y analog-reflector
         cd /opt/Analog_Reflector/ssl || true
         chmod +x mkcerts.sh
         ./mkcerts.sh || true
+        echo -e "${GREEN}Analog Reflector installed successfully.${RESET}"
+        sleep 1
         clear
     fi
 clear
 
     if ask "Would you like to install WebRX?"; then
+        clear
         cd /opt || exit 1
         git clone https://github.com/firealarmss/allstar2web || true
+        echo -e "${GREEN}WebRX installed successfully.${RESET}"
+        sleep 1
         clear
     fi
 clear
 
     if ask "Would you like to install MMDVM Reflector?"; then
+        clear
         apt update && apt upgrade -y && apt install -y git
         cd /opt || exit 1
         git clone https://github.com/firealarmss/MMDVM_Reflector || true
@@ -202,20 +241,28 @@ clear
         chmod +x install.sh
         ./install.sh || true
         systemctl disable mmdvm_reflector || true
+        echo -e "${GREEN}MMDVM Reflector installed successfully.${RESET}"
+        sleep 1
         clear
     fi
 clear
 
     if ask "Would you like to install DVReflectors?"; then
+        clear
         cd /opt || exit 1
         git clone https://github.com/nostar/DVReflectors || true
+        echo -e "${GREEN}DVReflectors installed successfully.${RESET}"
+        sleep 1
         clear
     fi
 clear
 
     if ask "Would you like to install MMDVM_CM?"; then
+        clear
         cd /opt || exit 1
         git clone https://github.com/nostar/MMDVM_CM || true
+        echo -e "${GREEN}MMDVM_CM installed successfully.${RESET}"
+        sleep 1
         clear
     fi
     clear
@@ -224,6 +271,7 @@ clear
         clear
         
         if ask "Would you like to add a user to sudo without password?"; then
+            clear
             apt install -y sudo
             read -p "What user do you want to add to sudo? " SUDO_USER
             if [ -n "$SUDO_USER" ]; then
@@ -231,31 +279,40 @@ clear
                 echo "$SUDO_USER ALL=(ALL:ALL) NOPASSWD: ALL" >> /etc/sudoers.d/$SUDO_USER
                 chmod 0440 /etc/sudoers.d/$SUDO_USER
                 echo -e "${GREEN}User $SUDO_USER added to sudo with NOPASSWD privileges.${RESET}"
+                sleep 1
             else
                 echo -e "${RED}No username provided. Skipping.${RESET}"
+                sleep 1
             fi
             clear
         fi
+        clear
 
         if ask "Would you like to allow root login via SSH?"; then
+            clear
             if [ -f /etc/ssh/sshd_config ]; then
                 sed -i 's/^#*PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
                 systemctl restart sshd 2>/dev/null || systemctl restart ssh 2>/dev/null
                 echo -e "${GREEN}Root login enabled in SSH configuration.${RESET}"
+                sleep 1
             else
                 echo -e "${RED}/etc/ssh/sshd_config not found.${RESET}"
+                sleep 1
             fi
             clear
         fi
+        clear
     fi
 fi
 clear
 
 if ask "Would you like to continue to KC3YWT custom installs?"; then
+    clear
     mkdir -p /etc/asterisk/local
     clear
 
     if ask "Would you like to install Auto Connect to many?"; then
+        clear
         cat > /etc/asterisk/local/autoconnect.sh <<EOF
 #!/bin/bash
 SCRIPT_DIR="\$(cd "\$(dirname "\$0")" && pwd)"
@@ -291,10 +348,13 @@ EOF
         chmod +x /etc/asterisk/local/autoconnect.sh
         touch /etc/asterisk/local/autoconnectnodes.txt
         echo -e "${GREEN}Auto Connect script installed.${RESET}"
+        sleep 1
         clear
     fi
+    clear
 
     if ask "Would you like to install Easy Connect?"; then
+        clear
         cat > /etc/asterisk/local/nodeconnect.sh <<EOF
 #!/bin/bash
 LOCAL_NODE=$NODE
@@ -324,8 +384,10 @@ esac
 EOF
         chmod +x /etc/asterisk/local/nodeconnect.sh
         echo -e "${GREEN}Easy Connect script installed.${RESET}"
+        sleep 1
         clear
     fi
+    clear
 fi
 clear
 
@@ -338,11 +400,11 @@ fi
 if ask "Would you like to remove the auto install files?"; then
     rm -f /opt/bookworm
     rm -rf /opt/asl3-autoinstall
-    cd /opt || true
     echo -e "${GREEN}Auto install files removed.${RESET}"
     clear
 fi
 
+cd /opt || true
 echo -e "${GREEN}Installation complete!${RESET}"
 
 # Ask to reboot
