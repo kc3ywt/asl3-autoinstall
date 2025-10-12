@@ -12,9 +12,8 @@ Run as root:
 cd /opt
 apt install git
 git clone https://github.com/kc3ywt/asl3-autoinstall
-cd asl3-autoinstall
-chmod +x auto-install
-./auto-install
+chmod +x /opt/asl3-autoinstall/auto-install
+/opt/asl3-autoinstall/auto-install
 ```
 
 ### Setup Documentation:
